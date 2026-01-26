@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { 
   Image, Video, Heart, MessageCircle, Share2, Plus, 
-  Globe, Bookmark, AlertTriangle, Send, MoreHorizontal, Smile
+  Globe, Bookmark, AlertTriangle, Send, MoreHorizontal, Smile, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePosts } from '../context/PostContext';
 
 const Feed = () => {
-  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [liked, setLiked] = useState(false);
+  const { posts, openCreatePost, addComment } = usePosts();
   const [showReport, setShowReport] = useState(false);
 
   const stories = [
@@ -53,13 +53,15 @@ const Feed = () => {
       </div>
 
       {/* 2. Integrated Post Creator */}
-      <div className="bg-white rounded-[2rem] p-4 shadow-sm border border-slate-100 mb-6 group focus-within:shadow-md transition-all">
+      <div 
+        onClick={openCreatePost}
+        className="bg-white rounded-[2rem] p-4 shadow-sm border border-slate-100 mb-6 group cursor-pointer hover:shadow-md transition-all"
+      >
         <div className="flex gap-4 items-center">
           <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100" className="w-10 h-10 rounded-full object-cover" alt="" />
-          <input 
-            placeholder="Share an update..." 
-            className="flex-1 bg-transparent border-none text-sm outline-none font-medium text-slate-600 placeholder:text-slate-400"
-          />
+          <div className="flex-1 bg-transparent border-none text-sm font-medium text-slate-400">
+            Share an update...
+          </div>
           <div className="flex gap-1">
             <button className="p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-full transition-all"><Image size={18} /></button>
             <button className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all"><Smile size={18} /></button>
@@ -67,101 +69,24 @@ const Feed = () => {
         </div>
       </div>
 
-      {/* 3. The Modern Post Card */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.98 }} 
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] mb-8"
-      >
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-5">
-            <div className="flex gap-3 items-center">
-              <div className="relative">
-                <img src="https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=100" className="w-10 h-10 rounded-full object-cover" alt="" />
-                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-900 text-[13px] tracking-tight">Cameron Williamson</h4>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
-                  <Globe size={10} /> 3h ago • Public
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-0.5">
-               <button 
-                onClick={() => setShowReport(true)}
-                className="p-2.5 text-slate-300 hover:text-rose-500 transition-all"
-               >
-                <AlertTriangle size={18} />
-              </button>
-              <button className="p-2.5 text-slate-300 hover:bg-slate-50 rounded-xl transition-all"><MoreHorizontal size={18} /></button>
-            </div>
-          </div>
+      {/* 3. Posts Feed */}
+      <div className="space-y-6">
+        {posts.map(post => (
+          <PostCard 
+            key={post.id} 
+            post={post} 
+            setShowReport={setShowReport} 
+            addComment={addComment}
+          />
+        ))}
+      </div>
 
-          <p className="text-slate-600 text-[14px] leading-relaxed mb-5 font-medium px-1">
-            Working on some new abstract 3D elements for the upcoming design system. The glass textures are finally starting to look real! ✨
-          </p>
-          
-          <div className="rounded-[2rem] overflow-hidden h-[400px] mb-5 border border-slate-50 relative group">
-            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 bg-slate-50/50 p-1 rounded-2xl border border-slate-100/50">
-              <PostAction 
-                active={liked} 
-                onClick={() => setLiked(!liked)} 
-                icon={<Heart size={18} fill={liked ? "#f43f5e" : "none"} />} 
-                count="2.4k" 
-                color="hover:text-rose-500" 
-              />
-              <PostAction 
-                active={isCommentsOpen} 
-                onClick={() => setIsCommentsOpen(!isCommentsOpen)} 
-                icon={<MessageCircle size={18} />} 
-                count="84" 
-                color="hover:text-indigo-500" 
-              />
-              <PostAction icon={<Share2 size={18} />} count="12" color="hover:text-emerald-500" />
-            </div>
-            <button className="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all">
-              <Bookmark size={20} />
-            </button>
-          </div>
-        </div>
-
-        {/* Improved Dynamic Comment Section */}
-        <AnimatePresence>
-          {isCommentsOpen && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }} 
-              animate={{ height: 'auto', opacity: 1 }} 
-              exit={{ height: 0, opacity: 0 }}
-              className="bg-slate-50/40 border-t border-slate-100 overflow-hidden"
-            >
-              <div className="p-6 space-y-5">
-                <Comment user="Hana" text="These textures are incredible! Tutorial soon?" time="1m" />
-                <Comment user="Alex" text="Love the lighting here." time="15m" />
-                
-                <div className="flex gap-3 items-center bg-white p-2 pl-4 rounded-[1.5rem] shadow-sm border border-slate-100">
-                  <input placeholder="Add a comment..." className="flex-1 text-xs outline-none font-medium text-slate-600" />
-                  <button className="p-2.5 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
-                    <Send size={14} />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {/* 4. Reporting Modal (More Sleek) */}
+      {/* 4. Reporting Modal */}
       <AnimatePresence>
         {showReport && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/30 backdrop-blur-sm"
+            className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-900/30 backdrop-blur-sm"
           >
             <motion.div 
               initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 10 }}
@@ -195,7 +120,155 @@ const Feed = () => {
   );
 };
 
-/* --- Micro Components --- */
+/* --- Sub Components --- */
+
+const PostCard = ({ post, setShowReport, addComment }) => {
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [liked, setLiked] = useState(post.isLiked || false);
+  const [commentText, setCommentText] = useState('');
+
+  const handleCreateComment = () => {
+    if (!commentText.trim()) return;
+    addComment(post.id, commentText);
+    setCommentText('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleCreateComment();
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.98 }} 
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"
+    >
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-5">
+          <div className="flex gap-3 items-center">
+            <div className="relative">
+              <img src={post.author.avatar} className="w-10 h-10 rounded-full object-cover" alt="" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 text-[13px] tracking-tight">{post.author.name}</h4>
+              <div className="flex items-center flex-wrap gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                <span>{post.timestamp}</span>
+                <span className="text-slate-300">•</span>
+                <span className="flex items-center gap-1">
+                  {post.visibility === 'Campus Only' ? <Users size={10} /> : <Globe size={10} />} 
+                  {post.visibility}
+                </span>
+                {post.category && (
+                  <>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md tracking-tight normal-case font-bold">{post.category}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-0.5">
+             <button 
+              onClick={() => setShowReport(true)}
+              className="p-2.5 text-slate-300 hover:text-rose-500 transition-all"
+             >
+              <AlertTriangle size={18} />
+            </button>
+            <button className="p-2.5 text-slate-300 hover:bg-slate-50 rounded-xl transition-all"><MoreHorizontal size={18} /></button>
+          </div>
+        </div>
+
+        <p className="text-slate-600 text-[14px] leading-relaxed mb-5 font-medium px-1 whitespace-pre-wrap">
+          {post.content}
+        </p>
+        
+        {post.image && (
+          <div className="rounded-[2rem] overflow-hidden max-h-[500px] mb-5 border border-slate-50 relative group bg-slate-50">
+            <img src={post.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 bg-slate-50/50 p-1 rounded-2xl border border-slate-100/50">
+            <PostAction 
+              active={liked} 
+              onClick={() => setLiked(!liked)} 
+              icon={<Heart size={18} fill={liked ? "#f43f5e" : "none"} />} 
+              count={liked && !post.isLiked ? (parseInt(post.likes) || 0) + 1 : post.likes} 
+              color="hover:text-rose-500" 
+            />
+            <PostAction 
+              active={isCommentsOpen} 
+              onClick={() => setIsCommentsOpen(!isCommentsOpen)} 
+              icon={<MessageCircle size={18} />} 
+              count={post.comments?.length || 0}
+              color="hover:text-indigo-500" 
+            />
+            <PostAction icon={<Share2 size={18} />} count={post.shares} color="hover:text-emerald-500" />
+          </div>
+          <button className="p-3 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all">
+            <Bookmark size={20} />
+          </button>
+        </div>
+      </div>
+
+      {/* Improved Dynamic Comment Section */}
+      <AnimatePresence>
+        {isCommentsOpen && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: 'auto', opacity: 1 }} 
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-slate-50/40 border-t border-slate-100 overflow-hidden"
+          >
+            <div className="p-6 space-y-5">
+              {/* Render dynamic comments */}
+              {post.comments && post.comments.length > 0 ? (
+                post.comments.map(comment => (
+                  <Comment 
+                    key={comment.id}
+                    user={comment.user} 
+                    avatar={comment.avatar}
+                    text={comment.text} 
+                    time={comment.time} 
+                  />
+                ))
+              ) : (
+                <div className="text-center py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  No comments yet
+                </div>
+              )}
+              
+              <div className="flex gap-3 items-center bg-white p-2 pl-4 rounded-[1.5rem] shadow-sm border border-slate-100">
+                <input 
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Add a comment..." 
+                  className="flex-1 text-xs outline-none font-medium text-slate-600" 
+                />
+                <button 
+                  onClick={handleCreateComment}
+                  disabled={!commentText.trim()}
+                  className={`
+                    p-2.5 rounded-xl text-white shadow-lg transition-all
+                    ${commentText.trim() 
+                      ? 'bg-indigo-600 shadow-indigo-100 hover:bg-indigo-700' 
+                      : 'bg-slate-300 shadow-none cursor-not-allowed'}
+                  `}
+                >
+                  <Send size={14} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
 
 const PostAction = ({ icon, count, color, active, onClick }) => (
   <button 
@@ -207,10 +280,10 @@ const PostAction = ({ icon, count, color, active, onClick }) => (
   </button>
 );
 
-const Comment = ({ user, text, time }) => (
+const Comment = ({ user, avatar, text, time }) => (
   <div className="flex gap-3">
     <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0 overflow-hidden shadow-inner">
-      <img src={`https://i.pravatar.cc/100?u=${user}`} alt="" />
+      <img src={avatar || `https://i.pravatar.cc/100?u=${user}`} alt="" />
     </div>
     <div className="flex-1">
       <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100/50">

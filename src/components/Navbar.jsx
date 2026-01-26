@@ -4,9 +4,11 @@ import {
   Compass, Users, Briefcase, PlusCircle, MessageCircle 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePosts } from '../context/PostContext';
 
 const Navbar = () => {
   const [activeTab, setActiveTab] = useState('Explore');
+  const { openCreatePost } = usePosts();
 
   return (
     <nav className="sticky top-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-2.5">
@@ -62,7 +64,7 @@ const Navbar = () => {
 
           {/* Action Icons */}
           <div className="flex items-center gap-1">
-            <NavAction icon={<PlusCircle size={20} />} label="New Post" hideLabel />
+            <NavAction icon={<PlusCircle size={20} />} label="New Post" hideLabel onClick={openCreatePost} />
             <NavAction icon={<MessageCircle size={20} />} badge="3" />
             <NavAction icon={<Bell size={20} />} badge="!" />
           </div>
@@ -102,8 +104,9 @@ const TabItem = ({ icon, label, active, onClick }) => (
   </button>
 );
 
-const NavAction = ({ icon, badge, label, hideLabel }) => (
+const NavAction = ({ icon, badge, label, hideLabel, onClick }) => (
   <motion.button 
+    onClick={onClick} 
     whileHover={{ y: -2 }}
     whileTap={{ scale: 0.9 }}
     className="p-2.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all relative flex items-center gap-2"
