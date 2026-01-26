@@ -3,13 +3,17 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
-import { MapPin, Calendar, Link as LinkIcon, Mail, ShieldCheck, Edit3, X, Check, ChevronDown } from 'lucide-react';
+import { MapPin, Calendar, Link as LinkIcon, ShieldCheck, Edit3, X, Check, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import PostCard from '../components/PostCard';
+import { usePosts } from '../context/PostContext'; // for actions like like/comment
 
 const Profile = () => {
   const { id } = useParams();
-  const { user: currentUser } = useAuth(); // Get logged-in user
+  const { user: currentUser, updateUser } = useAuth(); // Get logged-in user and updater
+  const { toggleLike, addComment, fetchComments } = usePosts(); // Actions
   const [profile, setProfile] = useState(null);
+  const [posts, setPosts] = useState([]); // User's posts
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -23,37 +27,94 @@ const Profile = () => {
     campus: 'Bengaluru',
     department: 'SOT'
   });
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const fileInputRef = React.useRef(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndPosts = async () => {
       try {
-        const res = await axios.get(`/api/users/${id}`);
-        setProfile(res.data);
+        const [resProfile, resPosts] = await Promise.all([
+           axios.get(`/api/users/${id}`),
+           axios.get(`/api/posts/user/${id}`)
+        ]);
+
+        setProfile(resProfile.data);
+        const mappedPosts = resPosts.data.map(p => ({
+            id: p.id,
+            author: {
+              name: p.user_name,
+              avatar: p.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.user_name)}&background=random`
+            },
+            content: p.content,
+            image: p.image_url,
+            likes: p.like_count,
+            isLiked: p.is_liked,
+            comments: [], 
+            commentCount: p.comment_count,
+            shares: 0,
+            timestamp: new Date(p.created_at).toLocaleDateString(),
+            visibility: p.visibility === 'campus' ? 'Campus Only' : 'Public',
+            category: p.category
+        }));
+        setPosts(mappedPosts);
+
         setEditForm({
-            bio: res.data.bio || '',
-            avatar_url: res.data.avatar_url || '',
-            username: res.data.username || '',
-            batch_year: res.data.batch_year || '',
-            campus: res.data.campus || 'Bengaluru',
-            department: res.data.department || 'SOT'
+            bio: resProfile.data.bio || '',
+            avatar_url: resProfile.data.avatar_url || '',
+            username: resProfile.data.username || '',
+            batch_year: resProfile.data.batch_year || '',
+            campus: resProfile.data.campus || 'Bengaluru',
+            department: resProfile.data.department || 'SOT'
         });
       } catch (err) {
+        console.error(err);
         setError('User not found');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
+    fetchProfileAndPosts();
   }, [id]);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAvatarFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
 
   const handleSave = async () => {
       try {
-          await axios.put('/api/auth/me', editForm);
-          setProfile({ ...profile, ...editForm });
+          const formData = new FormData();
+          Object.keys(editForm).forEach(key => {
+             formData.append(key, editForm[key]);
+          });
+          
+          if (avatarFile) {
+              formData.append('avatar', avatarFile);
+          }
+
+          const res = await axios.put('/api/auth/me', formData, {
+              headers: {
+                  'Content-Type': 'multipart/form-data',
+              },
+          });
+          
+          setProfile({ ...profile, ...res.data.user });
+          
+          // Verify if we are updating our own profile, then update context
+          if (currentUser && currentUser.id === profile.id) {
+             updateUser(res.data.user);
+          }
+
           setIsEditing(false);
-          // Optional: Update global context if it's "me"
+          // Cleanup preview url
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
       } catch (err) {
+          console.error(err);
           alert('Failed to update profile');
       }
   };
@@ -91,12 +152,31 @@ const Profile = () => {
 
               <div className="px-8 pb-8 relative">
                  {/* Avatar */}
-                 <div className="absolute -top-16 left-8">
-                    <div className="p-1.5 bg-white rounded-full">
+                 <div className="absolute -top-16 left-8 group/avatar">
+                    <div className="p-1.5 bg-white rounded-full relative">
                        <img 
-                          src={profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=random`} 
+                          src={previewUrl || profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=random`} 
                           alt={profile.name}
                           className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md bg-slate-50"
+                       />
+                       
+                       {/* Overlay Camera Icon for Editing */}
+                       {isEditing && (
+                           <button 
+                             onClick={() => fileInputRef.current?.click()}
+                             className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full cursor-pointer opacity-0 group-hover/avatar:opacity-100 transition-opacity"
+                           >
+                               <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
+                                  <Edit3 className="text-white w-6 h-6" />
+                               </div>
+                           </button>
+                       )}
+                       <input 
+                          type="file" 
+                          ref={fileInputRef} 
+                          className="hidden" 
+                          accept="image/*"
+                          onChange={handleFileChange}
                        />
                     </div>
                  </div>
@@ -212,14 +292,18 @@ const Profile = () => {
                             </div>
 
                             <div>
-                                <label className="text-xs font-bold text-slate-400 uppercase">Avatar URL</label>
-                                <input 
-                                    type="text" 
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium focus:outline-none focus:border-indigo-500"
-                                    value={editForm.avatar_url}
-                                    onChange={e => setEditForm({...editForm, avatar_url: e.target.value})}
-                                    placeholder="https://..."
-                                />
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase">Profile Picture</label>
+                                <div className="flex gap-2">
+                                <button 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full bg-slate-50 border border-slate-200 border-dashed rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:border-indigo-400 transition-colors text-left"
+                                >
+                                    {avatarFile ? avatarFile.name : "Click to upload new picture"}
+                                </button>
+                                </div>
+                            </div>
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase">Bio</label>
@@ -284,13 +368,29 @@ const Profile = () => {
            </div>
 
            {/* Placeholder for User's Posts */}
-           <div className="bg-white p-12 rounded-[2rem] border border-slate-100 text-center">
-              <div className="inline-flex p-4 rounded-full bg-slate-50 mb-4 text-slate-300">
-                 <Calendar className="w-8 h-8" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">No posts yet</h3>
-              <p className="text-slate-400 text-sm">When {profile.name} posts, you'll see it here.</p>
-           </div>
+           {/* User's Posts */}
+           {posts.length > 0 ? (
+               <div className="space-y-6">
+                   {posts.map(post => (
+                       <PostCard 
+                           key={post.id} 
+                           post={post}
+                           addComment={addComment}
+                           toggleLike={toggleLike}
+                           fetchComments={fetchComments}
+                           // setShowReport={...} // Add if needed
+                       />
+                   ))}
+               </div>
+           ) : (
+               <div className="bg-white p-12 rounded-[2rem] border border-slate-100 text-center">
+                  <div className="inline-flex p-4 rounded-full bg-slate-50 mb-4 text-slate-300">
+                     <Calendar className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">No posts yet</h3>
+                  <p className="text-slate-400 text-sm">When {profile.name} posts, you'll see it here.</p>
+               </div>
+           )}
         </main>
       </div>
     </div>

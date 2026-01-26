@@ -1,7 +1,23 @@
-import { db } from '../src/config/db.js';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load env from backend/.env
+// Load env from backend/.env
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Load env from backend/.env
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const migrate = async () => {
+  // Dynamic import to ensure env variables are loaded first
+  const { db } = await import('../src/config/db.js');
+
   try {
+
     console.log('Starting migration...');
 
     // 1. Add columns to posts table

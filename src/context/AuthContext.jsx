@@ -55,8 +55,12 @@ export const AuthProvider = ({ children }) => {
     fetchMe();
   }, [token]); // Re-run if token changes (e.g. login)
 
+  const updateUser = (userData) => {
+    setUser(prev => ({ ...prev, ...userData }));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

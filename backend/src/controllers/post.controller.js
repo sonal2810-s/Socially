@@ -7,11 +7,10 @@ import { db } from '../config/db.js';
 // CREATE POST
 export const createPost = async (req, res, next) => {
   try {
-    const {
+    let {
       content,
       visibility,
       category,
-      image_url,
       target_batches,
       target_campuses,
       target_branches
@@ -22,24 +21,55 @@ export const createPost = async (req, res, next) => {
       return res.status(400).json({ error: 'Post content is too short' });
     }
 
+    // Handle Image Upload
+    let image_url = null;
+    if (req.file) {
+      const protocol = req.protocol;
+      const host = req.get('host');
+      image_url = `${protocol}://${host}/uploads/posts/${req.file.filename}`;
+    } else if (req.body.image_url) {
+      // Fallback if they sent a URL string (unlikely in form-data but good for compatibility)
+      image_url = req.body.image_url;
+    }
+
+    // Since we are using multipart/form-data, arrays might come as strings or individual fields
+    // If they come as strings, we need to parse them.
+    // However, clean logic: if it's undefined or string "null" or "undefined", treat as null.
+    // If it's a JSON string, parse it.
+
+    const parseJsonField = (field) => {
+      if (!field || field === 'null' || field === 'undefined') return null;
+      try {
+        return typeof field === 'string' ? field : JSON.stringify(field); // Store as JSON string in DB
+      } catch (e) {
+        return null;
+      }
+    };
+
+    // DB expects JSON string for JSON columns or NULL
+    // But our frontend sends them as JSON strings inside formdata probably?
+    // Let's ensure we store valid JSON.
+    // If receiving '["2023"]' string -> that is perfect for DB. 
+
     const [result] = await db.query(
       `INSERT INTO posts (user_id, content, image_url, visibility, category, target_batches, target_campuses, target_branches)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         content,
-        image_url || null,
+        image_url,
         visibility || 'campus',
         category || 'general',
-        target_batches ? JSON.stringify(target_batches) : null,
-        target_campuses ? JSON.stringify(target_campuses) : null,
-        target_branches ? JSON.stringify(target_branches) : null
+        parseJsonField(target_batches),
+        parseJsonField(target_campuses),
+        parseJsonField(target_branches)
       ]
     );
 
     res.status(201).json({
       message: 'Post created',
-      postId: result.insertId
+      postId: result.insertId,
+      image_url
     });
   } catch (err) {
     next(err);
@@ -129,6 +159,46 @@ export const getFeed = async (req, res, next) => {
       data: formattedPosts,
       nextCursor: posts.length === limit ? posts[posts.length - 1].created_at : null
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET USER POSTS
+ * GET /api/posts/user/:userId
+ */
+export const getUserPosts = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user.id; // For 'is_liked' check
+
+    const [posts] = await db.query(`
+      SELECT 
+        posts.id,
+        posts.content,
+        posts.image_url,
+        posts.visibility,
+        posts.category,
+        posts.created_at,
+        users.id AS user_id,
+        users.name AS user_name,
+        users.avatar_url,
+        (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS like_count,
+        (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id AND likes.user_id = ?) AS is_liked,
+        (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS comment_count
+      FROM posts
+      JOIN users ON posts.user_id = users.id
+      WHERE posts.user_id = ?
+      ORDER BY posts.created_at DESC
+    `, [currentUserId, userId]);
+
+    const formattedPosts = posts.map(p => ({
+      ...p,
+      is_liked: !!p.is_liked
+    }));
+
+    res.json(formattedPosts);
   } catch (err) {
     next(err);
   }

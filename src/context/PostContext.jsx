@@ -139,13 +139,16 @@ export const PostProvider = ({ children }) => {
   };
 
   const createPost = async (payload) => {
+    // If payload is FormData (which it is now), don't stringify and don't set Content-Type (browser does it with boundary)
+    const isFormData = payload instanceof FormData;
+
     await fetch('/api/posts', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...getAuthHeaders()
       },
-      body: JSON.stringify(payload)
+      body: isFormData ? payload : JSON.stringify(payload)
     });
     fetchFeed();
   };

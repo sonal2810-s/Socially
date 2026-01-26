@@ -16,7 +16,8 @@ const CreatePostModal = () => {
   
   // Form State
   const [content, setContent] = useState('');
-  const [imageUrl, setImageUrl] = useState(''); // Text URL
+  const [imageFile, setImageFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   
   // Settings State
   const [visibility, setVisibility] = useState('campus'); // Default: Campus Only
@@ -72,7 +73,8 @@ const CreatePostModal = () => {
       if (textareaRef.current) textareaRef.current.focus();
       // Reset state on open
       setContent('');
-      setImageUrl('');
+      setImageFile(null);
+      setPreviewUrl(null);
       setVisibility('campus');
       setCategory('general');
       setError('');
@@ -105,30 +107,24 @@ const CreatePostModal = () => {
       // Simulate Backend Latency
       // await new Promise(resolve => setTimeout(resolve, 800));
 
-      // Determine final visibility payload
-      // If "Custom" is used, send the specific arrays. Even if "Campus Only" is selected, we can just send nulls for "All" or explicit "All".
-      // Backend handles null as "All" if we decide, or we can send full lists. 
-      // To match user request "combinations":
-      
-      let payload = {
-        content,
-        image_url: imageUrl,
-        visibility: 'campus', // Default fallback for legacy
-        category,
-        target_batches: selectedBatches.length > 0 ? selectedBatches : null,
-        target_campuses: selectedCampuses.length > 0 ? selectedCampuses : null,
-        target_branches: selectedBranches.length > 0 ? selectedBranches : null,
-      };
-
-      if (visibility === 'public') {
-          payload.visibility = 'public';
-          payload.target_batches = null; 
-          payload.target_campuses = null;
-          payload.target_branches = null;
+      // Build FormData
+      const formData = new FormData();
+      formData.append('content', content);
+      if (imageFile) {
+        formData.append('image', imageFile);
       }
+      formData.append('visibility', visibility);
+      formData.append('category', category);
       
-      // Call context function (which calls API)
-      await createPost(payload);
+      if (visibility === 'campus') {
+         if (selectedBatches.length > 0) formData.append('target_batches', JSON.stringify(selectedBatches));
+         if (selectedCampuses.length > 0) formData.append('target_campuses', JSON.stringify(selectedCampuses));
+         if (selectedBranches.length > 0) formData.append('target_branches', JSON.stringify(selectedBranches));
+      } else {
+         formData.append('visibility', 'public');
+      }
+
+      await createPost(formData);
 
       closeCreatePost();
       // Reset additional state
@@ -136,6 +132,7 @@ const CreatePostModal = () => {
       setSelectedCampuses([]);
       setSelectedBranches([]);
       setShowAdvancedVisibility(false);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
 
     } catch (err) {
       setError(err.message || 'Failed to post. Please try again.');
@@ -369,19 +366,28 @@ const CreatePostModal = () => {
               
               <div className="mb-4">
                  <input 
-                   type="text"
-                   value={imageUrl}
-                   onChange={(e) => setImageUrl(e.target.value)}
-                   placeholder="Image URL (optional)..."
-                   className="w-full text-xs p-3 bg-slate-50 rounded-xl outline-none text-slate-600 placeholder:text-slate-400 border border-slate-100 focus:border-indigo-200 transition-all"
+                   type="file"
+                   id="post-image-upload"
+                   className="hidden"
+                   accept="image/*"
+                   onChange={(e) => {
+                     const file = e.target.files[0];
+                     if (file) {
+                       setImageFile(file);
+                       setPreviewUrl(URL.createObjectURL(file));
+                     }
+                   }}
                  />
               </div>
 
-              {imageUrl && (
+              {previewUrl && (
                 <div className="relative mb-4 rounded-xl overflow-hidden group border border-slate-100">
-                  <img src={imageUrl} alt="Preview" className="w-full max-h-[300px] object-cover" onError={(e) => e.target.style.display='none'} />
+                  <img src={previewUrl} alt="Preview" className="w-full max-h-[300px] object-cover" />
                   <button 
-                    onClick={() => setImageUrl('')}
+                    onClick={() => {
+                      setImageFile(null);
+                      setPreviewUrl(null);
+                    }}
                     className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors backdrop-blur-sm"
                   >
                     <X size={16} />
@@ -393,12 +399,21 @@ const CreatePostModal = () => {
             {/* Footer Actions */}
             <div className="flex items-center justify-between p-6 pt-4 border-t border-slate-50 bg-white sticky bottom-0 z-10">
               <div className="flex gap-2 relative">
-                  <button 
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all"
-                  >
-                    <Smile size={22} />
-                  </button>
+                  <div className="flex gap-1">
+                      <button 
+                        onClick={() => document.getElementById('post-image-upload')?.click()}
+                        className="p-2.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all"
+                        title="Add Image"
+                      >
+                         <Image size={22} />
+                      </button>
+                      <button 
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="p-2.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all"
+                      >
+                        <Smile size={22} />
+                      </button>
+                  </div>
                   {/* Emoji Picker Popover */}
                   {showEmojiPicker && (
                     <div className="absolute bottom-full left-0 mb-2 z-50">

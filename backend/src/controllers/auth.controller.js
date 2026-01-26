@@ -101,8 +101,16 @@ export const getMe = async (req, res, next) => {
 /* ---------------- UPDATE CURRENT USER (ME) ---------------- */
 export const updateMe = async (req, res, next) => {
   try {
-    const { avatar_url, bio, username, batch, campus, branch } = req.body;
+    // Handle file upload
+    let { avatar_url, bio, username, batch, campus, branch } = req.body;
     const userId = req.user.id;
+
+    if (req.file) {
+      // Construct full URL
+      const protocol = req.protocol;
+      const host = req.get('host');
+      avatar_url = `${protocol}://${host}/uploads/avatars/${req.file.filename}`;
+    }
 
     await db.query(
       `UPDATE users SET 
@@ -115,6 +123,7 @@ export const updateMe = async (req, res, next) => {
       message: 'Profile updated successfully',
       user: { ...req.user, avatar_url, bio, username, batch, campus, branch }
     });
+
   } catch (err) {
     next(err);
   }

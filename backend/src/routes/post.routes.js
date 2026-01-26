@@ -1,10 +1,13 @@
 import express from 'express';
-import { createPost, getFeed } from '../controllers/post.controller.js';
+import { createPost, getFeed, getUserPosts } from '../controllers/post.controller.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
+
+import { uploadPostImage } from '../middlewares/upload.middleware.js';
 
 const router = express.Router();
 
-router.post('/', authMiddleware, createPost);
+router.post('/', authMiddleware, uploadPostImage.single('image'), createPost);
 router.get('/feed', authMiddleware, getFeed);
+router.get('/user/:userId', authMiddleware, getUserPosts);
 
 export default router;
