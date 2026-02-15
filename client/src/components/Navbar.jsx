@@ -27,7 +27,7 @@ const Navbar = () => {
             </div>
           </div>
           <span className="text-lg font-black text-slate-900 tracking-tighter hidden xl:block">
-            WeShare
+            Socially
           </span>
         </Link>
 

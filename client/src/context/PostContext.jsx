@@ -7,7 +7,7 @@ const PostContext = createContext();
 export const usePosts = () => useContext(PostContext);
 
 // Helper to normalize visibility strings/objects
-const normalizeVisibility = (vis) => {
+export const normalizeVisibility = (vis) => {
   if (!vis || vis === 'null' || vis === 'public') return null;
   if (typeof vis === 'string') {
     try {

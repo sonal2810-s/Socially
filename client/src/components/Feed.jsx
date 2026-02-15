@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { usePosts } from '../context/PostContext';
 import PostCard from './PostCard';
+import Profile from '../pages/Profile';
 
 const Feed = () => {
   const { user } = useAuth();
@@ -25,11 +26,11 @@ const Feed = () => {
   const stories = [
     { name: 'Your Story', img: user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=random`, isUser: true },
 
-    { name: 'Justin', img: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150' },
-    { name: 'Davis', img: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150' },
-    { name: 'Randy', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
-    { name: 'Charlie', img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150' },
-    { name: 'Zaire', img: 'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=150' },
+    { name: 'Manash', img: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150' },
+    { name: 'SonalSonal', img: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150' },
+    { name: 'Supra', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
+    { name: 'Sam', img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150' },
+    { name: 'Ronak', img: 'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=150' },
   ];
 
   return (
@@ -71,7 +72,7 @@ const Feed = () => {
         className="bg-white rounded-[2rem] p-4 shadow-sm border border-slate-100 mb-6 group cursor-pointer hover:shadow-md transition-all"
       >
         <div className="flex gap-4 items-center">
-          <img src={user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=random`} className="w-10 h-10 rounded-full object-cover" alt="" />
+          <img src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=random`} className="w-10 h-10 rounded-full object-cover" alt="" />
           <div className="flex-1 bg-transparent border-none text-sm font-medium text-slate-400">
             Share an update...
           </div>
@@ -148,7 +149,5 @@ const Feed = () => {
     </div>
   );
 };
-
 /* --- Sub Components --- */
-
 export default Feed;

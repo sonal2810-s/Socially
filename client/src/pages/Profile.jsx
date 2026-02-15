@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar';
 import { MapPin, Calendar, ShieldCheck, Edit3, X, Check, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PostCard from '../components/PostCard';
-import { usePosts } from '../context/PostContext';
+import { usePosts, normalizeVisibility } from '../context/PostContext';
 import { supabase } from '../lib/supabaseClient';
 
 const Profile = () => {
@@ -72,6 +72,7 @@ const Profile = () => {
                             avatar: p.profiles?.avatar_url
                         },
                         content: p.content,
+                        images: p.image_urls || [],
                         image: p.image_url,
                         likes: p.likes.length,
                         isLiked: isLiked,
@@ -79,7 +80,7 @@ const Profile = () => {
                         commentCount: p.comments.length,
                         shares: 0,
                         timestamp: new Date(p.created_at).toLocaleDateString(),
-                        visibility: p.visibility === 'campus' ? 'Campus Only' : 'Public',
+                        visibility: normalizeVisibility(p.visibility),
                         category: p.category
                     };
                 });
@@ -232,7 +233,7 @@ const Profile = () => {
                             <div className="absolute -top-16 left-8 group/avatar">
                                 <div className="p-1.5 bg-white rounded-full relative">
                                     <img
-                                        src={previewUrl || profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name)}&background=random`}
+                                        src={previewUrl || profile.avatar_url || `https://ui-avatars.com/api/?name=${profile.full_name}&background=random`}
                                         alt={profile.full_name}
                                         className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md bg-slate-50"
                                     />
