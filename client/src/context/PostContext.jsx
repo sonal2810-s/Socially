@@ -67,7 +67,8 @@ export const PostProvider = ({ children }) => {
             },
             userId: p.user_id, // Keep raw ID for ownership check
             content: p.content,
-            image: p.image_url,
+            images: p.image_urls || [], // Array of image URLs
+            image: p.image_url, // Backward compatibility for old posts
             likes: p.likes.length,
             isLiked: isLiked,
             comments: [],
@@ -117,42 +118,43 @@ export const PostProvider = ({ children }) => {
 
   const createPost = async (payload) => {
     try {
-      let content, imageFile, visibility, category;
+      let content, imageFiles, visibility, category;
 
       // Handle FormData or Object (Robust Check for Production)
       if (payload && typeof payload.get === 'function') {
         content = payload.get('content');
-        imageFile = payload.get('image');
+        imageFiles = payload.getAll('images'); // Get all images
         visibility = payload.get('visibility');
         category = payload.get('category');
       } else {
         // Fallback for direct object usage if any
         content = payload.content;
-        imageFile = payload.image; // Assume this might be a file or url
+        imageFiles = payload.images || []; // Assume this might be an array of files
         visibility = payload.visibility;
         category = payload.category;
       }
 
-      let imageUrl = null;
+      const imageUrls = [];
 
-      // Upload Image if present and is a File
-      if (imageFile && imageFile instanceof File) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('posts')
-          .upload(fileName, imageFile);
+      // Upload multiple images if present
+      if (imageFiles && imageFiles.length > 0) {
+        for (const imageFile of imageFiles) {
+          if (imageFile && imageFile instanceof File) {
+            const fileExt = imageFile.name.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage
+              .from('posts')
+              .upload(fileName, imageFile);
 
-        if (uploadError) throw uploadError;
+            if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('posts')
-          .getPublicUrl(fileName);
+            const { data: { publicUrl } } = supabase.storage
+              .from('posts')
+              .getPublicUrl(fileName);
 
-        imageUrl = publicUrl;
-      } else if (typeof imageFile === 'string') {
-        // If it's already a string (URL), usage it
-        imageUrl = imageFile;
+            imageUrls.push(publicUrl);
+          }
+        }
       }
 
       // Safe Visibility Parsing
@@ -170,7 +172,7 @@ export const PostProvider = ({ children }) => {
         .insert({
           user_id: user.id,
           content: content,
-          image_url: imageUrl,
+          image_urls: imageUrls, // Store array of URLs
           visibility: finalVisibility || null,
           category: category || 'general'
         });
